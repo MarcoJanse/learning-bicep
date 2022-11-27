@@ -3,6 +3,8 @@ param cosmosDBDatabaseThroughput int = 400
 param location string = resourceGroup().location
 
 var cosmosDBDataBaseName = 'FlightTests'
+var cosmosDBContainerName = 'FlightTests'
+var cosmosDBContainerPartitionKey = '/droneId'
 
 resource cosmosDBAccount 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
   name: cosmosDBAccountName
@@ -26,6 +28,22 @@ resource cosmosDBDatabase 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@20
     }
     options: {
       throughput: cosmosDBDatabaseThroughput
+    }
+  }
+
+  resource container 'containers' = {
+    name: cosmosDBContainerName
+    properties: {
+      resource: {
+        id: cosmosDBContainerName
+        partitionKey: {
+          kind: 'Hash'
+          paths: [
+            cosmosDBContainerPartitionKey
+          ]
+        }
+      }
+      options: {}
     }
   }
 }
