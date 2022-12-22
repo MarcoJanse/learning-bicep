@@ -1,10 +1,14 @@
-param virtualNetworks_ToyTruck_vnet_name string = 'ToyTruck-vnet'
-param virtualMachines_ToyTruckServer_name string = 'ToyTruckServer'
-param networkInterfaces_toytruckserver80_name string = 'toytruckserver80'
-param publicIPAddresses_ToyTruckServer_ip_name string = 'ToyTruckServer-ip'
-param networkSecurityGroups_ToyTruckServer_nsg_name string = 'ToyTruckServer-nsg'
+// variables
 
-resource networkSecurityGroups_ToyTruckServer_nsg_name_resource 'Microsoft.Network/networkSecurityGroups@2022-05-01' = {
+var virtualNetworkName        = 'ToyTruck-vnet'
+var virtualMachineName        = 'ToyTruckServer'
+var networkInterfaceName      = 'toytruckserver80'
+var publicIPAddressName       = 'ToyTruckServer-ip'
+var networkSecurityGroupName  = 'ToyTruckServer-nsg'
+
+// resources
+
+resource networkSecurityGroup 'Microsoft.Network/networkSecurityGroups@2022-05-01' = {
   name: networkSecurityGroups_ToyTruckServer_nsg_name
   location: 'westeurope'
   properties: {
@@ -12,7 +16,7 @@ resource networkSecurityGroups_ToyTruckServer_nsg_name_resource 'Microsoft.Netwo
   }
 }
 
-resource publicIPAddresses_ToyTruckServer_ip_name_resource 'Microsoft.Network/publicIPAddresses@2022-05-01' = {
+resource publicIPAddress 'Microsoft.Network/publicIPAddresses@2022-05-01' = {
   name: publicIPAddresses_ToyTruckServer_ip_name
   location: 'westeurope'
   sku: {
@@ -28,7 +32,7 @@ resource publicIPAddresses_ToyTruckServer_ip_name_resource 'Microsoft.Network/pu
   }
 }
 
-resource virtualMachines_ToyTruckServer_name_resource 'Microsoft.Compute/virtualMachines@2022-08-01' = {
+resource virtualMachine 'Microsoft.Compute/virtualMachines@2022-08-01' = {
   name: virtualMachines_ToyTruckServer_name
   location: 'westeurope'
   identity: {
@@ -78,7 +82,7 @@ resource virtualMachines_ToyTruckServer_name_resource 'Microsoft.Compute/virtual
     networkProfile: {
       networkInterfaces: [
         {
-          id: networkInterfaces_toytruckserver80_name_resource.id
+          id: networkInterface.id
           properties: {
             deleteOption: 'Delete'
           }
@@ -93,7 +97,7 @@ resource virtualMachines_ToyTruckServer_name_resource 'Microsoft.Compute/virtual
   }
 }
 
-resource virtualNetworks_ToyTruck_vnet_name_resource 'Microsoft.Network/virtualNetworks@2022-05-01' = {
+resource virtualNetwork 'Microsoft.Network/virtualNetworks@2022-05-01' = {
   name: virtualNetworks_ToyTruck_vnet_name
   location: 'westeurope'
   properties: {
@@ -105,7 +109,6 @@ resource virtualNetworks_ToyTruck_vnet_name_resource 'Microsoft.Network/virtualN
     subnets: [
       {
         name: 'default'
-        id: virtualNetworks_ToyTruck_vnet_name_default.id
         properties: {
           addressPrefix: '10.0.0.0/24'
           delegations: []
@@ -118,22 +121,13 @@ resource virtualNetworks_ToyTruck_vnet_name_resource 'Microsoft.Network/virtualN
     virtualNetworkPeerings: []
     enableDdosProtection: false
   }
-}
 
-resource virtualNetworks_ToyTruck_vnet_name_default 'Microsoft.Network/virtualNetworks/subnets@2022-05-01' = {
-  name: '${virtualNetworks_ToyTruck_vnet_name}/default'
-  properties: {
-    addressPrefix: '10.0.0.0/24'
-    delegations: []
-    privateEndpointNetworkPolicies: 'Disabled'
-    privateLinkServiceNetworkPolicies: 'Enabled'
+  resource defaultSubnet 'subnets' existing = {
+    name: 'default'
   }
-  dependsOn: [
-    virtualNetworks_ToyTruck_vnet_name_resource
-  ]
 }
 
-resource networkInterfaces_toytruckserver80_name_resource 'Microsoft.Network/networkInterfaces@2022-05-01' = {
+resource networkInterface 'Microsoft.Network/networkInterfaces@2022-05-01' = {
   name: networkInterfaces_toytruckserver80_name
   location: 'westeurope'
   kind: 'Regular'
@@ -141,7 +135,7 @@ resource networkInterfaces_toytruckserver80_name_resource 'Microsoft.Network/net
     ipConfigurations: [
       {
         name: 'ipconfig1'
-        id: '${networkInterfaces_toytruckserver80_name_resource.id}/ipConfigurations/ipconfig1'
+        id: '${networkInterface.id}/ipConfigurations/ipconfig1'
         etag: 'W/"b00ad4b4-ce01-4f95-9478-36ccbf2f4c2e"'
         type: 'Microsoft.Network/networkInterfaces/ipConfigurations'
         properties: {
@@ -150,7 +144,7 @@ resource networkInterfaces_toytruckserver80_name_resource 'Microsoft.Network/net
           privateIPAllocationMethod: 'Dynamic'
           publicIPAddress: {
             name: 'ToyTruckServer-ip'
-            id: publicIPAddresses_ToyTruckServer_ip_name_resource.id
+            id: publicIPAddress.id
             properties: {
               provisioningState: 'Succeeded'
               resourceGuid: '752f58de-996a-45ab-8c58-46bacd5a681d'
@@ -159,7 +153,7 @@ resource networkInterfaces_toytruckserver80_name_resource 'Microsoft.Network/net
               idleTimeoutInMinutes: 4
               ipTags: []
               ipConfiguration: {
-                id: '${networkInterfaces_toytruckserver80_name_resource.id}/ipConfigurations/ipconfig1'
+                id: '${networkInterface.id}/ipConfigurations/ipconfig1'
               }
               deleteOption: 'Delete'
             }
@@ -170,7 +164,7 @@ resource networkInterfaces_toytruckserver80_name_resource 'Microsoft.Network/net
             }
           }
           subnet: {
-            id: virtualNetworks_ToyTruck_vnet_name_default.id
+            id: virtualNetwork::defaultSubnet.id
           }
           primary: true
           privateIPAddressVersion: 'IPv4'
@@ -184,7 +178,7 @@ resource networkInterfaces_toytruckserver80_name_resource 'Microsoft.Network/net
     enableIPForwarding: false
     disableTcpStateTracking: false
     networkSecurityGroup: {
-      id: networkSecurityGroups_ToyTruckServer_nsg_name_resource.id
+      id: networkSecurityGroup.id
     }
     nicType: 'Standard'
   }
