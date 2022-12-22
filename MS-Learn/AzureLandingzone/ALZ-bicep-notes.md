@@ -156,3 +156,29 @@ New-AzResourceGroup `
 ```powershell
 New-AzResourceGroupDeployment @inputObject -Verbose
 ```
+
+### Management Groups Diagnostic Settings
+
+1. On your system, make sure you are in the root of the ALZ-Bicep git repo.
+2. Open Code in this folder: `code .`
+3. Modify the parameter file  `/infra-as-code\bicep\orchestration\mgDiagSettingsAll\parameters\mgDiagSettingsAll.parameters.all.json` 
+   1. Change `parTopLevelManagementGroupPrefix` to `ictstuff`
+   2. Change `parLogAnalyticsWorkspaceResourceId` to include your subscription ID. (HINT: get it with this cmdlet: 
+
+```powershell
+Get-AzSubscription -SubscriptionName 'Azure Subscription 1'| Select-Object -ExpandProperty Id
+```
+
+4. Next, create a hashtable with the parameters and deploy the bicep template.
+
+```powershell
+
+$inputObject = @{
+  TemplateFile          = "infra-as-code/bicep/orchestration/mgDiagSettingsAll/mgDiagSettingsAll.bicep"
+  TemplateParameterFile = "infra-as-code/bicep/orchestration/mgDiagSettingsAll/parameters/mgDiagSettingsAll.parameters.all.json"
+  Location              = "westeurope"
+  ManagementGroupId     = "ictstuff"
+}
+
+ New-AzManagementGroupDeployment @InputObject -Verbose
+ ```
