@@ -1,3 +1,30 @@
+// parameters
+
+@description('The location where resources are deployed')
+param location string = resourceGroup().location
+
+@description('The name of the size of the virtual machine to deploy.')
+param virtualMachineSizeName string
+
+@description('The name of the storage account SKU to use for the virtual machine\'s managed disk.')
+param virtualMachineManagedDiskStorageAccountType string
+
+@description('The administrator username for the virtual machine.')
+param virtualMachineAdminUsername string
+
+@description('The administrator password for the virtual machine.')
+@secure()
+param virtualMachineAdminPassword string
+
+@description('The name of the SKU of the public IP address to deploy.')
+param publicIPAddressSkuName string = 'Standard'
+
+@description('The virtual network address range.')
+param virtualNetworkAddressPrefix string
+
+@description('The default subnet address range within the virtual network')
+param virtualNetworkDefaultSubnetAddressPrefix string
+
 // variables
 
 var virtualNetworkName        = 'ToyTruck-vnet'
@@ -5,67 +32,61 @@ var virtualMachineName        = 'ToyTruckServer'
 var networkInterfaceName      = 'toytruckserver80'
 var publicIPAddressName       = 'ToyTruckServer-ip'
 var networkSecurityGroupName  = 'ToyTruckServer-nsg'
+var virtualNetworkDefaultSubnetName = 'default'
+var virtualMachineImageReference = {
+  publisher: 'canonical'
+  offer: '0001-com-ubuntu-server-focal'
+  sku: '20_04-lts-gen2'
+  version: 'latest'
+}
+var virtualMachineOSDiskName = '${virtualMachineName}_disk1_1430432358ab4e749e5afd33602c3829'
 
 // resources
 
 resource networkSecurityGroup 'Microsoft.Network/networkSecurityGroups@2022-05-01' = {
-  name: networkSecurityGroups_ToyTruckServer_nsg_name
-  location: 'westeurope'
-  properties: {
-    securityRules: []
-  }
+  name: networkSecurityGroupName
+  location: location
 }
 
 resource publicIPAddress 'Microsoft.Network/publicIPAddresses@2022-05-01' = {
-  name: publicIPAddresses_ToyTruckServer_ip_name
-  location: 'westeurope'
+  name: publicIPAddressName
+  location: location
   sku: {
-    name: 'Standard'
+    name: publicIPAddressSkuName
     tier: 'Regional'
   }
   properties: {
-    ipAddress: '52.178.65.38'
     publicIPAddressVersion: 'IPv4'
     publicIPAllocationMethod: 'Static'
     idleTimeoutInMinutes: 4
-    ipTags: []
   }
 }
 
 resource virtualMachine 'Microsoft.Compute/virtualMachines@2022-08-01' = {
-  name: virtualMachines_ToyTruckServer_name
-  location: 'westeurope'
-  identity: {
-    type: 'SystemAssigned'
-  }
+  name: virtualMachineName
+  location: location
   properties: {
     hardwareProfile: {
-      vmSize: 'Standard_D2s_v3'
+      vmSize: virtualMachineSizeName
     }
     storageProfile: {
-      imageReference: {
-        publisher: 'canonical'
-        offer: '0001-com-ubuntu-server-focal'
-        sku: '20_04-lts-gen2'
-        version: 'latest'
-      }
+      imageReference: virtualMachineImageReference
       osDisk: {
         osType: 'Linux'
-        name: '${virtualMachines_ToyTruckServer_name}_disk1_1430432358ab4e749e5afd33602c3829'
+        name: virtualMachineOSDiskName
         createOption: 'FromImage'
         caching: 'ReadWrite'
         managedDisk: {
-          storageAccountType: 'Premium_LRS'
-          id: resourceId('Microsoft.Compute/disks', '${virtualMachines_ToyTruckServer_name}_disk1_1430432358ab4e749e5afd33602c3829')
+          storageAccountType: virtualMachineManagedDiskStorageAccountType
         }
         deleteOption: 'Delete'
         diskSizeGB: 30
       }
-      dataDisks: []
     }
     osProfile: {
-      computerName: virtualMachines_ToyTruckServer_name
-      adminUsername: 'toytruckadmin'
+      computerName: virtualMachineName
+      adminUsername: virtualMachineAdminUsername
+      adminPassword: virtualMachineAdminPassword
       linuxConfiguration: {
         disablePasswordAuthentication: false
         provisionVMAgent: true
@@ -75,9 +96,7 @@ resource virtualMachine 'Microsoft.Compute/virtualMachines@2022-08-01' = {
         }
         enableVMAgentPlatformUpdates: false
       }
-      secrets: []
       allowExtensionOperations: true
-      requireGuestProvisionSignal: true
     }
     networkProfile: {
       networkInterfaces: [
@@ -98,70 +117,43 @@ resource virtualMachine 'Microsoft.Compute/virtualMachines@2022-08-01' = {
 }
 
 resource virtualNetwork 'Microsoft.Network/virtualNetworks@2022-05-01' = {
-  name: virtualNetworks_ToyTruck_vnet_name
-  location: 'westeurope'
+  name: virtualNetworkName
+  location: location
   properties: {
     addressSpace: {
       addressPrefixes: [
-        '10.0.0.0/16'
+        virtualNetworkAddressPrefix
       ]
     }
     subnets: [
       {
-        name: 'default'
+        name: virtualNetworkDefaultSubnetName
         properties: {
-          addressPrefix: '10.0.0.0/24'
-          delegations: []
+          addressPrefix: virtualNetworkDefaultSubnetAddressPrefix
           privateEndpointNetworkPolicies: 'Disabled'
           privateLinkServiceNetworkPolicies: 'Enabled'
         }
-        type: 'Microsoft.Network/virtualNetworks/subnets'
       }
     ]
-    virtualNetworkPeerings: []
     enableDdosProtection: false
   }
 
   resource defaultSubnet 'subnets' existing = {
-    name: 'default'
+    name: virtualNetworkDefaultSubnetName
   }
 }
 
 resource networkInterface 'Microsoft.Network/networkInterfaces@2022-05-01' = {
-  name: networkInterfaces_toytruckserver80_name
-  location: 'westeurope'
-  kind: 'Regular'
+  name: networkInterfaceName
+  location: location
   properties: {
     ipConfigurations: [
       {
         name: 'ipconfig1'
-        id: '${networkInterface.id}/ipConfigurations/ipconfig1'
-        etag: 'W/"b00ad4b4-ce01-4f95-9478-36ccbf2f4c2e"'
-        type: 'Microsoft.Network/networkInterfaces/ipConfigurations'
         properties: {
-          provisioningState: 'Succeeded'
-          privateIPAddress: '10.0.0.4'
           privateIPAllocationMethod: 'Dynamic'
           publicIPAddress: {
-            name: 'ToyTruckServer-ip'
             id: publicIPAddress.id
-            properties: {
-              provisioningState: 'Succeeded'
-              resourceGuid: '752f58de-996a-45ab-8c58-46bacd5a681d'
-              publicIPAddressVersion: 'IPv4'
-              publicIPAllocationMethod: 'Dynamic'
-              idleTimeoutInMinutes: 4
-              ipTags: []
-              ipConfiguration: {
-                id: '${networkInterface.id}/ipConfigurations/ipconfig1'
-              }
-              deleteOption: 'Delete'
-            }
-            type: 'Microsoft.Network/publicIPAddresses'
-            sku: {
-              name: 'Basic'
-              tier: 'Regional'
-            }
           }
           subnet: {
             id: virtualNetwork::defaultSubnet.id
@@ -171,9 +163,6 @@ resource networkInterface 'Microsoft.Network/networkInterfaces@2022-05-01' = {
         }
       }
     ]
-    dnsSettings: {
-      dnsServers: []
-    }
     enableAcceleratedNetworking: true
     enableIPForwarding: false
     disableTcpStateTracking: false
