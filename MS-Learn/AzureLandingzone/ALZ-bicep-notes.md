@@ -1,5 +1,21 @@
 # Azure Landingzone Bicep notes
 
+- [Azure Landingzone Bicep notes](#azure-landingzone-bicep-notes)
+  - [Introduction](#introduction)
+  - [Prerequisite steps](#prerequisite-steps)
+  - [Steps](#steps)
+    - [Management Groups](#management-groups)
+    - [Policies](#policies)
+    - [Custom Role Definitions](#custom-role-definitions)
+    - [Logging, Automation and Sentinel](#logging-automation-and-sentinel)
+    - [Management Groups Diagnostic Settings](#management-groups-diagnostic-settings)
+    - [Hub networking](#hub-networking)
+    - [Role Assignments for Management Groups and Subscriptions](#role-assignments-for-management-groups-and-subscriptions)
+    - [Subscription Placement](#subscription-placement)
+    - [Built-in and Custom Policy assignments](#built-in-and-custom-policy-assignments)
+      - [Issues](#issues)
+
+
 ## Introduction
 
 These are some personal notes during deployment of the Azure Landing Zone on my personal Azure tenant
@@ -141,7 +157,7 @@ $inputObject = @{
 ```powershell
 # For Azure Global regions
 # Set Platform management subscripion ID as the the current subscription
-$ManagementSubscriptionId = Get-AzSubscription | Where-Object { $_.Name -match 'Visual Studio Enterprise' } | Select-Object -ExpandProperty Id
+$ManagementSubscriptionId = Get-AzSubscription | Where-Object { $_.Name -match '(Marco-3fifty-01)' } | Select-Object -ExpandProperty Id
 
 # Set the top level MG Prefix in accordance to your environment.
 $TopLevelMGPrefix = "ictstuff"
@@ -149,7 +165,7 @@ $TopLevelMGPrefix = "ictstuff"
 # Parameters necessary for deployment
 $inputObject = @{
   DeploymentName        = 'ictstuff-LoggingDeploy-{0}' -f (-join (Get-Date -Format 'yyyyMMddTHHMMssffffZ')[0..63])
-  ResourceGroupName     = "rg-$TopLevelMGPrefix-logging-001"
+  ResourceGroupName     = "rg-logging-shared-weu-001"
   TemplateFile          = "infra-as-code/bicep/modules/logging/logging.bicep"
   TemplateParameterFile = "infra-as-code/bicep/modules/logging/parameters/logging.parameters.all.json"
 }
@@ -178,10 +194,10 @@ New-AzResourceGroupDeployment @inputObject -Verbose
 2. Open Code in this folder: `code .`
 3. Modify the parameter file  `/infra-as-code\bicep\orchestration\mgDiagSettingsAll\parameters\mgDiagSettingsAll.parameters.all.json` 
    1. Change `parTopLevelManagementGroupPrefix` to `ictstuff`
-   2. Change `parLogAnalyticsWorkspaceResourceId` to include your subscription ID. (HINT: get it with this cmdlet: 
+   2. Change `parLogAnalyticsWorkspaceResourceId` to include your subscription ID, the resourcegroup that holds the log analytics workspace and the log analytics workspace name. (HINT: get the subscription ID with this cmdlet: 
 
 ```powershell
-Get-AzSubscription | Where-Object { $_.Name -match 'Visual Studio Enterprise' } | Select-Object -ExpandProperty Id
+Get-AzSubscription | Where-Object { $_.Name -match 'Marco-3fifty-01' } | Select-Object -ExpandProperty Id
 Select-AzSubscription -SubscriptionId $ManagementSubscriptionId
 ```
 
@@ -226,3 +242,105 @@ Deploy the Diagnostics settings bicep template using the command below:
    1. `parVpnGatewayConfig`
    2. `parExpressRouteGatewayConfig`
 
+After that, first select the right subscription. You might have a separate subscription for connectivity/networking, but I will use the Visual Studio MPN subscription
+
+```powershell
+# Set Platform connectivity subscription ID as the the current subscription
+$ConnectivitySubscriptionId = Get-AzSubscription | Where-Object { $_.Name -match 'Marco-3fifty-02' } | Select-Object -ExpandProperty Id
+
+Select-AzSubscription -SubscriptionId $ConnectivitySubscriptionId
+```
+
+Next, create a hastable of all parameters to deploy the hub networking bicep template
+
+```powershell
+# Parameters necessary for deployment
+$inputObject = @{
+  DeploymentName        = 'ictstuff-HubNetworkingDeploy-{0}' -f (-join (Get-Date -Format 'yyyyMMddTHHMMssffffZ')[0..63])
+  ResourceGroupName     = "rg-hubnetworking-shared-weu-001"
+  TemplateFile          = "infra-as-code/bicep/modules/hubNetworking/hubNetworking.bicep"
+  TemplateParameterFile = "infra-as-code/bicep/modules/hubNetworking/parameters/hubNetworking.parameters.all.json"
+}
+```
+
+now, create the Azure resource group to hold all resources in the region you prefer
+
+```powershell
+New-AzResourceGroup `
+  -Name $inputObject.ResourceGroupName `
+  -Location 'westeurope'
+```
+
+Finally, deploy the resources in the bicep file using the variables and the inputobject you created.
+
+```powershell
+New-AzResourceGroupDeployment @inputObject -Verbose
+```
+
+> Verbose is optional, and it's recommended to do a `-WhatIf` first to validate your code and expected outcome.
+
+### Role Assignments for Management Groups and Subscriptions
+
+> The example below is to assign a Readers role to a security group: **sg-ictstuff-readers**
+
+1. On your system, make sure you are in the root of the ALZ-Bicep git repo.
+2. Open Code in this folder: `code .`
+3. Modify the bicep file `infra-as-code\bicep\modules\roleAssignments\parameters\roleAssignmentManagementGroup.securityGroup.parameters.all.json` with the following changes:
+   1. Remove the `parRoleAssignmentNameGuid` code block. This is optional and will be constructed by the `roleAssignmentResourceGroup.bicep`-file.
+   2. `parRoleDefinitionId` with the GUID of the (built-in) role definition. See [Azure built-in roles | MS-Learn](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles). For example, the built-in Reader role has the following GUID: `acdd72a7-3385-48ef-bd42-f606fba81ae7`
+   3. `parAssigneeObjectId` with the objectID of your security group. In my example, I use `sg-ictstuff-readers`. (But I won't display the GUID here...)
+4. Making sure you are logged in to Azure with the Az PowerShell module, create the inputobject below:
+
+```powershell
+$inputObject = @{
+  DeploymentName        = 'alz-RoleAssignmentsDeployment-{0}' -f (-join (Get-Date -Format 'yyyyMMddTHHMMssffffZ')[0..63])
+  Location              = 'westeurope'
+  ManagementGroupId     = 'ictstuff'
+  TemplateFile          = "infra-as-code/bicep/modules/roleAssignments/roleAssignmentManagementGroup.bicep"
+  TemplateParameterFile = 'infra-as-code/bicep/modules/roleAssignments/parameters/roleAssignmentManagementGroup.securityGroup.parameters.all.json'
+}
+```
+
+Next, create the role assignment:
+
+```powershell
+New-AzManagementGroupDeployment @inputObject
+```
+
+### Subscription Placement
+
+> Skipped this one for now
+
+### Built-in and Custom Policy assignments
+
+
+```powershell
+# For Azure global regions
+
+$inputObject = @{
+  DeploymentName        = 'alz-alzPolicyAssignmentDefaultsDeployment-{0}' -f (-join (Get-Date -Format 'yyyyMMddTHHMMssffffZ')[0..63])
+  Location              = 'westeurope'
+  ManagementGroupId     = 'ictstuff'
+  TemplateFile          = "infra-as-code/bicep/modules/policy/assignments/alzDefaults/alzDefaultPolicyAssignments.bicep"
+  TemplateParameterFile = 'infra-as-code/bicep/modules/policy/assignments/alzDefaults/parameters/alzDefaultPolicyAssignments.parameters.all.json'
+}
+```
+
+Deploy whenever you're ready and add `-Verbose` or `-WhatIf` as you like
+
+```powershell
+New-AzManagementGroupDeployment @inputObject
+```
+
+#### Issues
+
+Currently getting lots of issues with deployment of this:
+
+```powershell
+New-AzManagementGroupDeployment: Deployment 'ALZBicep-polAssi-denyPrivEscAKS-lz-westeurope-5co7pqsca4y44' could not be found.
+StatusCode: 404
+ReasonPhrase: Not Found
+OperationID : ffbddf6b-adbb-43ef-8761-37e419049690
+
+New-AzManagementGroupDeployment: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond. (management.azure.com:443)
+``` 
