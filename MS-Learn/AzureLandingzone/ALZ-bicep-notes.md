@@ -315,8 +315,6 @@ New-AzManagementGroupDeployment @inputObject
 
 
 ```powershell
-# For Azure global regions
-
 $inputObject = @{
   DeploymentName        = 'alz-alzPolicyAssignmentDefaultsDeployment-{0}' -f (-join (Get-Date -Format 'yyyyMMddTHHMMssffffZ')[0..63])
   Location              = 'westeurope'
