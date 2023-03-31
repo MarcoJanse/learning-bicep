@@ -46,8 +46,10 @@ New-AzRoleAssignment -Scope '/' -RoleDefinitionName 'Owner' -ObjectId $user.Id
 - Log in using `Connect-AzAccount`
 - Navigate to locally cloned git repo of (forked) ALZ-Bicep: `ALZ-Bicep`.
 - Open VScode here: `code .`.
-- Switch to the `ictstuff-landingzone-test`-branch.
-- Modify the `ALZ-Bicep\infra-as-code\bicep\modules\managementGroups\parameters\managementGroups.parameters.all.json`.
+- Switch to the `ictstuff-landingzone`-branch.
+- Copy the `ALZ-Bicep\infra-as-code\bicep\modules\managementGroups\parameters\managementGroups.parameters.all.json` and rename it.
+  - This way, you can keep syncing with the upstream branch and not run into any merge conflicts when the original files get updated.
+  - In my case I named it `ALZ-Bicep\infra-as-code\bicep\modules\managementGroups\parameters\managementGroups.parameters.ictstuff.json`.
 - Update the parameters below with your own, for example:
 
 ```json
@@ -56,13 +58,13 @@ New-AzRoleAssignment -Scope '/' -RoleDefinitionName 'Owner' -ObjectId $user.Id
   "contentVersion": "1.0.0.0",
   "parameters": {
     "parTopLevelManagementGroupPrefix": {
-      "value": "ictstuff"
+      "value": "alz"
     },
     "parTopLevelManagementGroupDisplayName": {
-      "value": "ICTStuff"
+      "value": "Azure Landing Zones"
     },
     "parTopLevelManagementGroupParentId": {
-      "value": ""
+      "value": "-mg"
     },
     "parLandingZoneMgAlzDefaultsEnable": {
       "value": true
@@ -87,7 +89,7 @@ $inputObject = @{
   DeploymentName          = 'ictstuff-ManagementGroupsDeployment-{0}' -f (-join (Get-Date -Format 'yyyyMMddTHHMMssffffZ')[0..63])
   Location                = 'westeurope'
   TemplateFile            = 'infra-as-code\bicep\modules\managementGroups\managementGroups.bicep'
-  TemplateParameterFile  = 'infra-as-code\bicep\modules\managementGroups\parameters\managementGroups.parameters.all.json'
+  TemplateParameterFile  = 'infra-as-code\bicep\modules\managementGroups\parameters\managementGroups.parameters.ictstuff.json'
 }
 ```
 
@@ -99,19 +101,21 @@ New-AzTenantDeployment @inputObject -Verbose
 
 ### Policies
 
-1. On your system, make sure you are in the root of the ALZ-Bicep git repo.
-2. Open Code in this folder: `code .`.
-3. Modify the parameter file `\infra-as-code\bicep\modules\policy\definitions\parameters\customPolicyDefinitions.parameters.all.json`.
-   1. Change `parTargetManagementGroupId` value to `ICTStuff`.
-4. Create the below variable that will make a hastable of al the cmdlet parameters and values:
+- On your system, make sure you are in the root of the ALZ-Bicep git repo.
+- Open Code in this folder: `code .`.
+- Copy the parameter file `\infra-as-code\bicep\modules\policy\definitions\parameters\customPolicyDefinitions.parameters.all.json` and rename it.
+  - In my case, I named it `\infra-as-code\bicep\modules\policy\definitions\parameters\customPolicyDefinitions.parameters.ictstuff.json`
+  - Change `parTargetManagementGroupId` value to to match your `parTopLevelManagementGroupPrefix` from the [Management group deployment](#management-groups).
+    - Don't forget the suffix if you have added one.
+- Create the below variable that will make a hash table of al the cmdlet parameters and values:
 
 ```powershell
 $inputObject = @{
   DeploymentName        = 'ictstuff-PolicyDefsDeployment-{0}' -f (-join (Get-Date -Format 'yyyyMMddTHHMMssffffZ')[0..63])
   Location              = 'westeurope'
-  ManagementGroupId     = 'ictstuff'
+  ManagementGroupId     = 'alz-mg'
   TemplateFile          = "infra-as-code/bicep/modules/policy/definitions/customPolicyDefinitions.bicep"
-  TemplateParameterFile = 'infra-as-code/bicep/modules/policy/definitions/parameters/customPolicyDefinitions.parameters.all.json'
+  TemplateParameterFile = 'infra-as-code/bicep/modules/policy/definitions/parameters/customPolicyDefinitions.parameters.ictstuff.json'
 }
 ```
 
@@ -127,17 +131,19 @@ New-AzManagementGroupDeployment @inputObject -Verbose
 
 - On your system, make sure you are in the root of the ALZ-Bicep git repo.
 - Open Code in this folder: `code .`.
-- Modify the parameter file `\infra-as-code\bicep\modules\customRoleDefinitions\parameters\customRoleDefinitions.parameters.all.json`.
-  - Change `parTargetManagementGroupId` value to `ICTStuff`.
-- Create the below variable that will make a hastable of al the cmdlet parameters and values:
+- Copy the parameter file `\infra-as-code\bicep\modules\customRoleDefinitions\parameters\customRoleDefinitions.parameters.all.json` and rename it.
+  - In my case, I named it `\infra-as-code\bicep\modules\customRoleDefinitions\parameters\customRoleDefinitions.parameters.ictstuff.json`
+  - Change `parTargetManagementGroupId` value to to match your `parTopLevelManagementGroupPrefix` from the [Management group deployment](#management-groups).
+    - Don't forget the suffix if you have added one.
+- Create the below variable that will make a hash table of al the cmdlet parameters and values:
 
 ```powershell
 $inputObject = @{
   DeploymentName        = 'ictstuff-CustomRoleDefsDeployment-{0}' -f (-join (Get-Date -Format 'yyyyMMddTHHMMssffffZ')[0..63])
   Location              = 'westeurope'
-  ManagementGroupId     = 'ictstuff'
+  ManagementGroupId     = 'alz-mg'
   TemplateFile          = "infra-as-code/bicep/modules/customRoleDefinitions/customRoleDefinitions.bicep"
-  TemplateParameterFile = 'infra-as-code/bicep/modules/customRoleDefinitions/parameters/customRoleDefinitions.parameters.all.json'
+  TemplateParameterFile = 'infra-as-code/bicep/modules/customRoleDefinitions/parameters/customRoleDefinitions.parameters.ictstuff.json'
 }
 ```
 
