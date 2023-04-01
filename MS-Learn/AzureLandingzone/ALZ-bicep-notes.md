@@ -43,7 +43,6 @@ New-AzRoleAssignment -Scope '/' -RoleDefinitionName 'Owner' -ObjectId $user.Id
 
 ### Management Groups
 
-- Log in using `Connect-AzAccount`
 - Navigate to locally cloned git repo of (forked) ALZ-Bicep: `ALZ-Bicep`.
 - Open VScode here: `code .`.
 - Switch to the `ictstuff-landingzone`-branch.
@@ -82,7 +81,16 @@ New-AzRoleAssignment -Scope '/' -RoleDefinitionName 'Owner' -ObjectId $user.Id
 }
 ```
 
-- Create the below variable that will make a hastable of al the cmdlet parameters and values:
+- Log in using `Connect-AzAccount`
+- Make sure a subscription is selected that's part of the correct Azure tenant.
+  - You can use `Get-AzContext` to view that
+    - If not, use the following to set the right subscription:
+
+```powershell
+Set-AzContext -Subscription (Get-AzSubscription | Where-Object Name -match '<unique part of subscription name>').Id
+```
+
+- Create the below variable that will make a hashtable of al the cmdlet parameters and values:
 
 ```powershell
 $inputObject = @{
@@ -96,8 +104,10 @@ $inputObject = @{
 - Deploy the bicep file using the hash of the parameters to create the management group structure.
 
 ```powershell
-New-AzTenantDeployment @inputObject -Verbose
+New-AzTenantDeployment @inputObject -WhatIf
 ```
+
+> WhatIf is recommended to run first, and you could replace `-WhatIf` with `-Verbose` to follow the deployment along.
 
 ### Policies
 
@@ -122,10 +132,10 @@ $inputObject = @{
 - After that, run the `New-AzManagementGroupDeployment` using the created variable for all parameters
 
 ```powershell
-New-AzManagementGroupDeployment @inputObject -Verbose
+New-AzManagementGroupDeployment @inputObject -WhatIf
 ```
 
-> The `-Verbose` parameter is optional
+> WhatIf is recommended to run first, and you could replace `-WhatIf` with `-Verbose` to follow the deployment along.
 
 ### Custom Role Definitions
 
@@ -150,8 +160,10 @@ $inputObject = @{
 - After that, run the `New-AzManagementGroupDeployment` using the created variable for all parameters
 
 ```powershell
-New-AzManagementGroupDeployment @inputObject -Verbose
+New-AzManagementGroupDeployment @inputObject -WhatIf
 ```
+
+> WhatIf is recommended to run first, and you could replace `-WhatIf` with `-Verbose` to follow the deployment along.
 
 > The `-Verbose` parameter is optional
 
@@ -161,22 +173,25 @@ New-AzManagementGroupDeployment @inputObject -Verbose
 
 - On your system, make sure you are in the root of the ALZ-Bicep git repo.
 - Open Code in this folder: `code .`
-- Modify the parameter file `\infra-as-code\bicep\modules\logging\parameters\logging.parameters.all.json`.
-  - Change `parLogAnalyticsWorkspaceName` value to `ictstuff-log-analytics`.
+- Copy the parameter file `\infra-as-code\bicep\modules\logging\parameters\logging.parameters.all.json` and rename it.
+  - In my case, I named it `\infra-as-code\bicep\modules\logging\parameters\logging.parameters.ictstuff.json`
+  - [Optional]: Change `parLogAnalyticsWorkspaceName` value if you want.
   - Change `parLogAnalyticsWorkspaceLocation` value to `westeurope`.
   - Change `parAutomationAccountLocation` value to `westeurope`.
+  - [Optional]: Change `parAutomationAccountName` value if you want
+  - Under `parTags`, change the `Environment` to your desired value. (I used Shared)
 - Use the below scripts to define required parameters and create the necessary resource group:
 
 ```powershell
 # Set the top level MG Prefix in accordance to your environment.
-$TopLevelMGPrefix = "ictstuff"
+$TopLevelMGPrefix = "alz"
 
 # Parameters necessary for deployment
 $inputObject = @{
   DeploymentName        = 'ictstuff-LoggingDeploy-{0}' -f (-join (Get-Date -Format 'yyyyMMddTHHMMssffffZ')[0..63])
-  ResourceGroupName     = "rg-logging-shared-weu-001"
+  ResourceGroupName     = "rg-logging-shared-001"
   TemplateFile          = "infra-as-code/bicep/modules/logging/logging.bicep"
-  TemplateParameterFile = "infra-as-code/bicep/modules/logging/parameters/logging.parameters.all.json"
+  TemplateParameterFile = "infra-as-code/bicep/modules/logging/parameters/logging.parameters.ictstuff.json"
 }
 ```
 
@@ -194,20 +209,25 @@ New-AzResourceGroup `
 - Deploy the Logging bicep module using the command below:
 
 ```powershell
-New-AzResourceGroupDeployment @inputObject -Verbose
+New-AzResourceGroupDeployment @inputObject -WhatIf
 ```
+
+> WhatIf is recommended to run first, and you could replace `-WhatIf` with `-Verbose` to follow the deployment along.
 
 ### Management Groups Diagnostic Settings
 
 - On your system, make sure you are in the root of the ALZ-Bicep git repo.
 - Open Code in this folder: `code .`
-- Modify the parameter file  `/infra-as-code\bicep\orchestration\mgDiagSettingsAll\parameters\mgDiagSettingsAll.parameters.all.json` 
-  - Change `parTopLevelManagementGroupPrefix` to `ictstuff`
-  - Change `parLogAnalyticsWorkspaceResourceId` to include your subscription ID, the resourcegroup that holds the log analytics workspace and the log analytics workspace name. (HINT: get the subscription ID with this cmdlet:
+- Copy the parameter file  `/infra-as-code\bicep\orchestration\mgDiagSettingsAll\parameters\mgDiagSettingsAll.parameters.all.json` and rename it.
+  - In my case, I named it `/infra-as-code\bicep\orchestration\mgDiagSettingsAll\parameters\mgDiagSettingsAll.parameters.ictstuff.json`
+  - [optional] Change `parTopLevelManagementGroupPrefix` to your desired value
+  - [optional] Change `parTopLevelManagementGroupSuffix` to your desired value.
+    - I used `-mg` here
+  - Change `parLogAnalyticsWorkspaceResourceId` to include your subscription ID, the resourcegroup that holds the log analytics workspace and the log analytics workspace name.
+  **HINT:** get the subscription ID with this cmdlet:
 
 ```powershell
-Get-AzSubscription | Where-Object { $_.Name -match 'Marco-3fifty-02' } | Select-Object -ExpandProperty Id
-Select-AzSubscription -SubscriptionId $ManagementSubscriptionId
+Get-AzSubscription | Where-Object { $_.Name -match '<unique part of subscription name>' } | Select-Object -ExpandProperty Id
 ```
 
 - Next, create a hashtable with the parameters and deploy the bicep template.
@@ -215,36 +235,68 @@ Select-AzSubscription -SubscriptionId $ManagementSubscriptionId
 ```powershell
 $inputObject = @{
   TemplateFile          = "infra-as-code/bicep/orchestration/mgDiagSettingsAll/mgDiagSettingsAll.bicep"
+  TemplateParameterFile = "infra-as-code/bicep/orchestration/mgDiagSettingsAll/parameters/mgDiagSettingsAll.parameters.ictstuff.json"
   Location              = "westeurope"
-  ManagementGroupId     = "ictstuff"
+  ManagementGroupId     = "alz-mg"
 }
 ```
 
 Deploy the Diagnostics settings bicep template using the command below:
 
 ```powershell
- New-AzManagementGroupDeployment @InputObject -Verbose
+ New-AzManagementGroupDeployment @InputObject -WhatIf
  ```
+
+ > WhatIf is recommended to run first, and you could replace `-WhatIf` with `-Verbose` to follow the deployment along.
 
 ### Hub networking
 
 - On your system, make sure you are in the root of the ALZ-Bicep git repo.
 - Open Code in this folder: `code .`
-- Modify the bicep file `infra-as-code\bicep\modules\hubNetworking\hubNetworking.bicep` with the following changes:
-  - `param parDdosEnabled bool = false` Unless you want to drain your subscription budget very quickly
-- Modify the parameters file `infra-as-code\bicep\modules\hubNetworking\parameters\hubNetworking.parameters.all.json` with your own values
-  - `parLocation`
-  - `parHubNetworkName`
-  - `parAzBastionName`
-  - `parDdosPlanName`
-  - `parAzFirewallName`
-  - `parAzFirewallPoliciesName`
-  - `parHubRouteTableName`
-  - `parPrivateDnsZones`
-    - `privatelink.westeurope.azmk8s.io`
-    - `privatelink.westeurope.batch.azure.com`
-    - `privatelink.westeurope.kusto.windows.net`
-    - `privatelink.we.backup.windowsazure.com`
+- Copy the parameters file `infra-as-code\bicep\modules\hubNetworking\parameters\hubNetworking.parameters.all.json` and rename it
+  - I used `infra-as-code\bicep\modules\hubNetworking\parameters\hubNetworking.parameters.ictstuff.json` and edited the following values:
+    - `parLocation`
+    - `parHubNetworkName`
+    - `parHubNetworkAddressPrefix`
+      - I used `172.20.0.0/16` and created the following `parSubnets`
+
+```json
+"parSubnets": {
+      "value": [
+        {
+          "name": "AzureBastionSubnet",
+          "ipAddressRange": "172.20.0.0/24"
+        },
+        {
+          "name": "ManagementSubnet",
+          "ipAddressRange": "172.20.1.0/24"
+        },
+        {
+          "name": "GatewaySubnet",
+          "ipAddressRange": "172.20.254.0/24"
+        },
+        {
+          "name": "AzureFirewallSubnet",
+          "ipAddressRange": "10.20.255.0/24"
+        }
+      ]
+    },
+```
+
+> Please note that you cannot rename the `AzureBastionSubnet`. This name is mandatory
+
+- Continue with the rest of the `hubNetworking.parameters.ictstuff.json` file
+  - After the `parSubnets, verify or change these values:
+    - `parAzBastionName`
+    - `parDdosPlanName`
+    - `parAzFirewallName`
+    - `parAzFirewallPoliciesName`
+    - `parHubRouteTableName`
+    - `parPrivateDnsZones`
+      - `privatelink.westeurope.azmk8s.io`
+      - `privatelink.westeurope.batch.azure.com`
+      - `privatelink.westeurope.kusto.windows.net`
+      - `privatelink.we.backup.windowsazure.com`
 - Do not deploy an VPN gateway and ExpressRoute by removing all parameters inside the following arrays. (make them empty):
   - `parVpnGatewayConfig`
   - `parExpressRouteGatewayConfig`
@@ -260,15 +312,15 @@ After that, first select the right subscription. You might have a separate subsc
 # Select-AzSubscription -SubscriptionId $ConnectivitySubscriptionId
 ```
 
-Next, create a hastable of all parameters to deploy the hub networking bicep template
+Next, create a hash table of all parameters to deploy the hub networking bicep template
 
 ```powershell
 # Parameters necessary for deployment
 $inputObject = @{
   DeploymentName        = 'ictstuff-HubNetworkingDeploy-{0}' -f (-join (Get-Date -Format 'yyyyMMddTHHMMssffffZ')[0..63])
-  ResourceGroupName     = "rg-hubnetworking-shared-weu-001"
+  ResourceGroupName     = "rg-hubnetworking-shared-001"
   TemplateFile          = "infra-as-code/bicep/modules/hubNetworking/hubNetworking.bicep"
-  TemplateParameterFile = "infra-as-code/bicep/modules/hubNetworking/parameters/hubNetworking.parameters.all.json"
+  TemplateParameterFile = "infra-as-code/bicep/modules/hubNetworking/parameters/hubNetworking.parameters.ictstuff.json"
 }
 ```
 
@@ -280,45 +332,74 @@ New-AzResourceGroup `
   -Location 'westeurope'
 ```
 
-- Finally, deploy the resources in the bicep file using the variables and the inputobject you created.
+- Finally, deploy the resources in the bicep file using the variables and the `inputobject` you created.
 
 ```powershell
-New-AzResourceGroupDeployment @inputObject -Verbose
+New-AzResourceGroupDeployment @inputObject -WhatIf
 ```
 
-> Verbose is optional, and it's recommended to do a `-WhatIf` first to validate your code and expected outcome.
+> WhatIf is recommended parameter to run first, and you could replace `-WhatIf` with `-Verbose` to follow the deployment along.
 
 ### Role Assignments for Management Groups and Subscriptions
 
 > The example below is to assign a Readers role to a security group: **sg-ictstuff-readers**
 
-1. On your system, make sure you are in the root of the ALZ-Bicep git repo.
-2. Open Code in this folder: `code .`
-3. Modify the bicep file `infra-as-code\bicep\modules\roleAssignments\parameters\roleAssignmentManagementGroup.securityGroup.parameters.all.json` with the following changes:
-   1. Remove the `parRoleAssignmentNameGuid` code block. This is optional and will be constructed by the `roleAssignmentResourceGroup.bicep`-file.
-   2. `parRoleDefinitionId` with the GUID of the (built-in) role definition. See [Azure built-in roles | MS-Learn](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles). For example, the built-in Reader role has the following GUID: `acdd72a7-3385-48ef-bd42-f606fba81ae7`
-   3. `parAssigneeObjectId` with the objectID of your security group. In my example, I use `sg-ictstuff-readers`. (But I won't display the GUID here...)
-4. Making sure you are logged in to Azure with the Az PowerShell module, create the inputobject below:
+- On your system, make sure you are in the root of the ALZ-Bicep git repo.
+- Open Code in this folder: `code .`
+- Copy the bicep file `infra-as-code\bicep\modules\roleAssignments\parameters\roleAssignmentManagementGroup.securityGroup.parameters.all.json` and rename it.
+  - In mÿ case, I renamed it to `infra-as-code\bicep\modules\roleAssignments\parameters\roleAssignmentManagementGroup.securityGroup.parameters.ictstuff.json`
+    - Remove the `parRoleAssignmentNameGuid` code block. This is optional and will be constructed by the `roleAssignmentResourceGroup.bicep`-file.
+    - `parRoleDefinitionId` with the GUID of the (built-in) role definition. See [Azure built-in roles | MS-Learn](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles). For example, the built-in Reader role has the following GUID: `acdd72a7-3385-48ef-bd42-f606fba81ae7`
+    - `parAssigneeObjectId` with the objectID of your security group. In my example, I use `sg-ictstuff-readers`. (But I won't display the GUID here...)
+- Making sure you are logged in to Azure with the Az PowerShell module, create the `inputobject` below:
 
 ```powershell
 $inputObject = @{
-  DeploymentName        = 'alz-RoleAssignmentsDeployment-{0}' -f (-join (Get-Date -Format 'yyyyMMddTHHMMssffffZ')[0..63])
+  DeploymentName        = 'ictstuff-RoleAssignmentsDeployment-{0}' -f (-join (Get-Date -Format 'yyyyMMddTHHMMssffffZ')[0..63])
   Location              = 'westeurope'
-  ManagementGroupId     = 'ictstuff'
+  ManagementGroupId     = 'alz-mg'
   TemplateFile          = "infra-as-code/bicep/modules/roleAssignments/roleAssignmentManagementGroup.bicep"
-  TemplateParameterFile = 'infra-as-code/bicep/modules/roleAssignments/parameters/roleAssignmentManagementGroup.securityGroup.parameters.all.json'
+  TemplateParameterFile = 'infra-as-code/bicep/modules/roleAssignments/parameters/roleAssignmentManagementGroup.securityGroup.parameters.ictstuff.json'
 }
 ```
 
 Next, create the role assignment:
 
 ```powershell
-New-AzManagementGroupDeployment @inputObject
+New-AzManagementGroupDeployment @inputObject -WhatIf
 ```
 
 ### Subscription Placement
 
-> Skipped this one for now
+- On your system, make sure you are in the root of the ALZ-Bicep git repo.
+- Open Code in this folder: `code .`
+- Copy the bicep file `infra-as-code\bicep\orchestration\subPlacementAll\parameters\subPlacementAll.parameters.all.json` and rename it.
+  - In mÿ case, I renamed it to `infra-as-code\bicep\orchestration\subPlacementAll\parameters\subPlacementAll.parameters.ictstuff.json`
+  - Review/change the following parameters
+    - `parTopLevelManagementGroupPrefix`
+      - I kept mine set to `alz`
+    - `parTopLevelManagementGroupSuffix`
+      - Changed this to `-mg`
+    - Next, I added my subscription ID's under the following management groups:
+      - `parIntRootMgSubs`
+      - `parDecommissionedMgSubs`
+- Making sure you are logged in to Azure with the Az PowerShell module, create the `inputobject` below:
+
+```powershell
+$inputObject = @{
+  DeploymentName        = 'ictstuff-SubPlacementAll-{0}' -f (-join (Get-Date -Format 'yyyyMMddTHHMMssffffZ')[0..63])
+  Location              = 'westeurope'
+  ManagementGroupId     = 'alz-mg'
+  TemplateFile          = "infra-as-code/bicep/orchestration/subPlacementAll/subPlacementAll.bicep"
+  TemplateParameterFile = 'infra-as-code/bicep/orchestration/subPlacementAll/parameters/subPlacementAll.parameters.ictstuff.json'
+}
+```
+
+```powershell
+New-AzManagementGroupDeployment @inputObject -WhatIf
+```
+
+> WhatIf is recommended to run first, and you could replace `-WhatIf` with `-Verbose` to follow the deployment along.
 
 ### Built-in and Custom Policy assignments
 
@@ -328,7 +409,7 @@ $inputObject = @{
   Location              = 'westeurope'
   ManagementGroupId     = 'ictstuff'
   TemplateFile          = "infra-as-code/bicep/modules/policy/assignments/alzDefaults/alzDefaultPolicyAssignments.bicep"
-  TemplateParameterFile = 'infra-as-code/bicep/modules/policy/assignments/alzDefaults/parameters/alzDefaultPolicyAssignments.parameters.all.json'
+  TemplateParameterFile = 'infra-as-code/bicep/modules/policy/assignments/alzDefaults/parameters/alzDefaultPolicyAssignments.parameters.ictstuff.json'
 }
 ```
 
