@@ -13,8 +13,6 @@
     - [Role Assignments for Management Groups and Subscriptions](#role-assignments-for-management-groups-and-subscriptions)
     - [Subscription Placement](#subscription-placement)
     - [Built-in and Custom Policy assignments](#built-in-and-custom-policy-assignments)
-      - [Issues](#issues)
-        - [Update 25/03/2023](#update-25032023)
     - [Spoke Networking](#spoke-networking)
 
 ## Introduction
@@ -403,38 +401,28 @@ New-AzManagementGroupDeployment @inputObject -WhatIf
 
 ### Built-in and Custom Policy assignments
 
+- On your system, make sure you are in the root of the ALZ-Bicep git repo.
+- Open Code in this folder: `code .`
+- Copy the bicep file `infra-as-code\bicep\modules\policy\assignments\alzDefaults\parameters\alzDefaultPolicyAssignments.parameters.all.json` and rename it.
+  - In mÿ case, I renamed it to `infra-as-code\bicep\modules\policy\assignments\alzDefaults\parameters\alzDefaultPolicyAssignments.parameters.ictstuff.json`
+
 ```powershell
 $inputObject = @{
   DeploymentName        = 'alz-alzPolicyAssignmentDefaultsDeployment-{0}' -f (-join (Get-Date -Format 'yyyyMMddTHHMMssffffZ')[0..63])
   Location              = 'westeurope'
-  ManagementGroupId     = 'ictstuff'
-  TemplateFile          = "infra-as-code/bicep/modules/policy/assignments/alzDefaults/alzDefaultPolicyAssignments.bicep"
+  ManagementGroupId     = 'alz-mg'
+  TemplateFile          = "infra-as-code/bicep/modules/policy/assignments/alzDefaults/alzDefaultPolicyAssignments.ictstuff.bicep"
   TemplateParameterFile = 'infra-as-code/bicep/modules/policy/assignments/alzDefaults/parameters/alzDefaultPolicyAssignments.parameters.ictstuff.json'
 }
 ```
 
-Deploy whenever you're ready and add `-Verbose` or `-WhatIf` as you like
+Verify the deployment
 
 ```powershell
-New-AzManagementGroupDeployment @inputObject
+New-AzManagementGroupDeployment @inputObject -WhatIf
 ```
 
-#### Issues
-
-Currently getting lots of issues with deployment of this:
-
-```powershell
-New-AzManagementGroupDeployment: Deployment 'ALZBicep-polAssi-denyPrivEscAKS-lz-westeurope-5co7pqsca4y44' could not be found.
-StatusCode: 404
-ReasonPhrase: Not Found
-OperationID : ffbddf6b-adbb-43ef-8761-37e419049690
-
-New-AzManagementGroupDeployment: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond. (management.azure.com:443)
-```
-
-##### Update 25/03/2023
-
-This seems to be resolved with `Az.Accounts` module version `2.11.2`. See [Disconnect-AzAccount AccountNotFound error #20871 | GitHub.com](https://github.com/Azure/azure-powershell/issues/20871)
+> WhatIf is recommended parameter to run first, and you could replace `-WhatIf` with `-Verbose` to follow the deployment along when everything looks good.
 
 ### Spoke Networking
 
