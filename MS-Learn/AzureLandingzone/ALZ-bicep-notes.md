@@ -316,7 +316,7 @@ Next, create a hash table of all parameters to deploy the hub networking bicep t
 # Parameters necessary for deployment
 $inputObject = @{
   DeploymentName        = 'ictstuff-HubNetworkingDeploy-{0}' -f (-join (Get-Date -Format 'yyyyMMddTHHMMssffffZ')[0..63])
-  ResourceGroupName     = "rg-hubnetworking-shared-001"
+  ResourceGroupName     = "rg-hubnetworking-shd-001"
   TemplateFile          = "infra-as-code/bicep/modules/hubNetworking/hubNetworking.bicep"
   TemplateParameterFile = "infra-as-code/bicep/modules/hubNetworking/parameters/hubNetworking.parameters.ictstuff.json"
 }
@@ -426,4 +426,102 @@ New-AzManagementGroupDeployment @inputObject -WhatIf
 
 ### Spoke Networking
 
-> Not required at the moment
+- On your system, make sure you are in the root of the ALZ-Bicep git repo.
+- Open Code in this folder: `code .`
+- Copy the parameters file `infra-as-code\bicep\orchestration\hubPeeredSpoke\parameters\hubPeeredSpoke.parameters.all.json` and rename it
+  - I used `infra-as-code\bicep\orchestration\hubPeeredSpoke\parameters\hubPeeredSpoke.parameters.ictstuff_neu.json` and `infra-as-code\bicep\orchestration\hubPeeredSpoke\parameters\hubPeeredSpoke.parameters.ictstuff_gec.json`
+- Below is a json example for northeurope.
+
+```json
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "parLocation": {
+      "value": "northeurope"
+    },
+    "parTopLevelManagementGroupPrefix": {
+      "value": "alz"
+    },
+    "parTopLevelManagementGroupSuffix": {
+      "value": "-mg"
+    },
+    "parPeeredVnetSubscriptionId": {
+      "value": "30ff91cf-356d-4e30-b506-7687c4599923"
+    },
+    "parPeeredVnetSubscriptionMgPlacement": {
+      "value": "ste-platform-mg"
+    },
+    "parResourceGroupNameForSpokeNetworking": {
+      "value": "rg-lzne-spokenetworking-shd-001"
+    },
+    "parDdosProtectionPlanId": {
+      "value": ""
+    },
+    "parSpokeNetworkName": {
+      "value": "vnet-spoke-neu"
+    },
+    "parSpokeNetworkAddressPrefix": {
+      "value": "172.21.0.0/16"
+    },
+    "parDnsServerIps": {
+      "value": []
+    },
+    "parNextHopIpAddress": {
+      "value": ""
+    },
+    "parDisableBgpRoutePropagation": {
+      "value": false
+    },
+    "parSpoketoHubRouteTableName": {
+      "value": "rt-spoke-neu-to-hub"
+    },
+    "parHubVirtualNetworkId": {
+      "value": "/subscriptions/30ff91cf-356d-4e30-b506-7687c4599923/resourceGroups/rg-hubnetworking-shd-001/providers/Microsoft.Network/virtualNetworks/vnet-hub-weu"
+    },
+    "parAllowSpokeForwardedTraffic": {
+      "value": false
+    },
+    "parAllowHubVPNGatewayTransit": {
+      "value": true
+    },
+    "parTags": {
+      "value": {
+        "Application": "Azure Landing Zone - North Europe",
+        "Deployment": "Bicep",
+        "Environment": "shared",
+        "Owner": "Marco Janse"
+      }
+    },
+    "parTelemetryOptOut": {
+      "value": false
+    }
+  }
+}
+```
+
+After that, first select the right subscription. You might have a separate subscription for connectivity/networking, but I will use the Visual Studio MPN subscription
+
+```powershell
+Set-AzContext -Subscription (Get-AzSubscription | Where-Object Name -match 'Marco-3fifty-02').id
+```
+
+- Prepare deployment:
+
+```powershell
+$inputObject = @{
+  DeploymentName        = 'ictstuff-HubPeeredSpoke-nl-{0}' -f (-join (Get-Date -Format 'yyyyMMddTHHMMssffffZ')[0..63])
+  Location              = 'northeurope'
+  ManagementGroupId     = 'alz-platform-mg'
+  TemplateFile          = "infra-as-code/bicep/orchestration/hubPeeredSpoke/hubPeeredSpoke.bicep"
+  TemplateParameterFile = 'infra-as-code/bicep/orchestration/hubPeeredSpoke/parameters/hubPeeredSpoke.parameters.ictstuff_neu.json'
+}
+```
+
+- Test the deployment
+
+```powershell
+New-AzManagementGroupDeployment @inputObject -WhatIf
+```
+
+Do the same for any additional spoke networks.
