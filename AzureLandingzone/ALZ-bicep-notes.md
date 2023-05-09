@@ -405,13 +405,76 @@ New-AzManagementGroupDeployment @inputObject -WhatIf
 - Open Code in this folder: `code .`
 - Copy the bicep file `infra-as-code\bicep\modules\policy\assignments\alzDefaults\parameters\alzDefaultPolicyAssignments.parameters.all.json` and rename it.
   - In mÿ case, I renamed it to `infra-as-code\bicep\modules\policy\assignments\alzDefaults\parameters\alzDefaultPolicyAssignments.parameters.ictstuff.json`
+    - Exclude the policies you do not want to assign using the `parExcludedPolicyAssignments`-array.
+
+
+I've changed the following parameters and excluded some policies in my environment:
+
+```json
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "parTopLevelManagementGroupPrefix": {
+      "value": "alz"
+    },
+    "parTopLevelManagementGroupSuffix": {
+      "value": "-mg"
+    },
+    "parLogAnalyticsWorkSpaceAndAutomationAccountLocation": {
+      "value": "westeurope"
+    },
+    "parLogAnalyticsWorkspaceResourceId": {
+      "value": "/subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/resourceGroups/rg-logging-shared-001/providers/Microsoft.OperationalInsights/workspaces/alz-log-analytics"
+    },
+    "parLogAnalyticsWorkspaceLogRetentionInDays": {
+      "value": "365"
+    },
+    "parAutomationAccountName": {
+      "value": "alz-automation-account"
+    },
+    "parMsDefenderForCloudEmailSecurityContact": {
+      "value": "marco.janse@ictstuff.info"
+    },
+    "parDdosProtectionPlanId": {
+      "value": ""
+    },
+    "parPrivateDnsResourceGroupId": {
+      "value": "/subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/resourceGroups/rg-hubnetworking-shared-001"
+    },
+    "parPrivateDnsZonesNamesToAuditInCorp": {
+      "value": []
+    },
+    "parDisableAlzDefaultPolicies": {
+      "value": false
+    },
+    "parVmBackupExclusionTagName" : {
+      "value": "Backup"
+    },
+    "parVmBackupExclusionTagValue" : {
+      "value": [
+        "ExcludedFromBackup"
+      ]
+    },
+    "parExcludedPolicyAssignments": {
+      "value": [
+        "Deny-Public-IP",
+        "Enable-DDoS-VNET"
+      ]
+    },
+    "parTelemetryOptOut": {
+      "value": false
+    }
+  }
+}
+```
 
 ```powershell
 $inputObject = @{
   DeploymentName        = 'alz-alzPolicyAssignmentDefaultsDeployment-{0}' -f (-join (Get-Date -Format 'yyyyMMddTHHMMssffffZ')[0..63])
   Location              = 'westeurope'
   ManagementGroupId     = 'alz-mg'
-  TemplateFile          = "infra-as-code/bicep/modules/policy/assignments/alzDefaults/alzDefaultPolicyAssignments.ictstuff.bicep"
+  TemplateFile          = "infra-as-code/bicep/modules/policy/assignments/alzDefaults/alzDefaultPolicyAssignments.bicep"
   TemplateParameterFile = 'infra-as-code/bicep/modules/policy/assignments/alzDefaults/parameters/alzDefaultPolicyAssignments.parameters.ictstuff.json'
 }
 ```
@@ -447,7 +510,7 @@ New-AzManagementGroupDeployment @inputObject -WhatIf
       "value": "-mg"
     },
     "parPeeredVnetSubscriptionId": {
-      "value": "30ff91cf-356d-4e30-b506-7687c4599923"
+      "value": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
     },
     "parPeeredVnetSubscriptionMgPlacement": {
       "value": "ste-platform-mg"
@@ -477,7 +540,7 @@ New-AzManagementGroupDeployment @inputObject -WhatIf
       "value": "rt-spoke-neu-to-hub"
     },
     "parHubVirtualNetworkId": {
-      "value": "/subscriptions/30ff91cf-356d-4e30-b506-7687c4599923/resourceGroups/rg-hubnetworking-shd-001/providers/Microsoft.Network/virtualNetworks/vnet-hub-weu"
+      "value": "/subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/resourceGroups/rg-hubnetworking-shd-001/providers/Microsoft.Network/virtualNetworks/vnet-hub-weu"
     },
     "parAllowSpokeForwardedTraffic": {
       "value": false
