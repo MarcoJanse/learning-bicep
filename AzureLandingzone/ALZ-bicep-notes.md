@@ -425,7 +425,7 @@ I've changed the following parameters and excluded some policies in my environme
       "value": "westeurope"
     },
     "parLogAnalyticsWorkspaceResourceId": {
-      "value": "/subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/resourceGroups/rg-logging-shared-001/providers/Microsoft.OperationalInsights/workspaces/alz-log-analytics"
+      "value": "/subscriptions/30ff91cf-356d-4e30-b506-7687c4599923/resourceGroups/rg-logging-shared-001/providers/Microsoft.OperationalInsights/workspaces/alz-log-analytics"
     },
     "parLogAnalyticsWorkspaceLogRetentionInDays": {
       "value": "365"
@@ -440,7 +440,7 @@ I've changed the following parameters and excluded some policies in my environme
       "value": ""
     },
     "parPrivateDnsResourceGroupId": {
-      "value": "/subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/resourceGroups/rg-hubnetworking-shared-001"
+      "value": "/subscriptions/30ff91cf-356d-4e30-b506-7687c4599923/resourceGroups/rg-hubnetworking-shared-001"
     },
     "parPrivateDnsZonesNamesToAuditInCorp": {
       "value": []
@@ -449,7 +449,7 @@ I've changed the following parameters and excluded some policies in my environme
       "value": false
     },
     "parVmBackupExclusionTagName" : {
-      "value": "Backup"
+      "value": "BackupPolicy"
     },
     "parVmBackupExclusionTagValue" : {
       "value": [
