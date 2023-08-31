@@ -196,8 +196,6 @@ $inputObject = @{
 - Once you have the variables defined, use the blocks below to create the required resource group and after that, deploy the logging Bicep module:
 
 ```powershell
-Select-AzSubscription -SubscriptionId $ManagementSubscriptionId
-
 # Create Resource Group - optional when using an existing resource group
 New-AzResourceGroup `
   -Name $inputObject.ResourceGroupName `
@@ -256,7 +254,7 @@ Deploy the Diagnostics settings bicep template using the command below:
     - `parLocation`
     - `parHubNetworkName`
     - `parHubNetworkAddressPrefix`
-      - I used `172.20.0.0/16` and created the following `parSubnets`
+      - I used `172.20.0.0/16` and updated the following `parSubnets`
 
 ```json
 "parSubnets": {
@@ -264,10 +262,6 @@ Deploy the Diagnostics settings bicep template using the command below:
         {
           "name": "AzureBastionSubnet",
           "ipAddressRange": "172.20.0.0/24"
-        },
-        {
-          "name": "ManagementSubnet",
-          "ipAddressRange": "172.20.1.0/24"
         },
         {
           "name": "GatewaySubnet",
@@ -282,6 +276,8 @@ Deploy the Diagnostics settings bicep template using the command below:
 ```
 
 > Please note that you cannot rename the `AzureBastionSubnet`. This name is mandatory
+>
+> I prefer to add additional subnets with NSG's using a separate bicep file, referencing the existing vNet.
 
 - Continue with the rest of the `hubNetworking.parameters.ictstuff.json` file
   - After the `parSubnets, verify or change these values:
