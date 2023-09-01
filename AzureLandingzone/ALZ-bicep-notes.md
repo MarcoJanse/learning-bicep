@@ -13,6 +13,8 @@
     - [Role Assignments for Management Groups and Subscriptions](#role-assignments-for-management-groups-and-subscriptions)
     - [Subscription Placement](#subscription-placement)
     - [Built-in and Custom Policy assignments](#built-in-and-custom-policy-assignments)
+      - [alzDefaultPolicyAssignments.ictstuff.bicep - Changes](#alzdefaultpolicyassignmentsictstuffbicep---changes)
+      - [alzDefaultPolicyAssignments.parameters.ictstuff.json](#alzdefaultpolicyassignmentsparametersictstuffjson)
     - [Spoke Networking](#spoke-networking)
 
 ## Introduction
@@ -397,14 +399,34 @@ New-AzManagementGroupDeployment @inputObject -WhatIf
 
 ### Built-in and Custom Policy assignments
 
+> **NOTE** Because I only have 1 subscription to deploy resources to, I do the following:
+>
+> 1. Put my subscription under the platform-mg management group
+> 2. Assign all platform-management, platform-identity, and platform-connectivity policies to the platform toplevel management group
+
 - On your system, make sure you are in the root of the ALZ-Bicep git repo.
 - Open Code in this folder: `code .`
+- Copy the `infra-as-code/bicep/modules/policy/assignments/alzDefaults/alzDefaultPolicyAssignments.bicep` 
+  - In my case I renamed it to `infra-as-code/bicep/modules/policy/assignments/alzDefaults/alzDefaultPolicyAssignments.ictstuff.bicep`
+  - Edit this file and change line 332-334 and change the last part of each line:
+    - Change `platform-management$` to `platform$`
+    - Change `platform-connectivity$` to `platform$`
+    - Change `platform-identity$` to `platform$`
 - Copy the bicep file `infra-as-code\bicep\modules\policy\assignments\alzDefaults\parameters\alzDefaultPolicyAssignments.parameters.all.json` and rename it.
   - In mÿ case, I renamed it to `infra-as-code\bicep\modules\policy\assignments\alzDefaults\parameters\alzDefaultPolicyAssignments.parameters.ictstuff.json`
-    - Exclude the policies you do not want to assign using the `parExcludedPolicyAssignments`-array.
+    - Exclude the policies you do not want to assign using the `parExcludedPolicyAssignments`-array in the parameter file.
 
+Below you find the 3 lines that changed:
 
-I've changed the following parameters and excluded some policies in my environment:
+#### alzDefaultPolicyAssignments.ictstuff.bicep - Changes
+
+```powershell
+  platformManagement: parPlatformMgAlzDefaultsEnable ? '${parTopLevelManagementGroupPrefix}-platform-management${parTopLevelManagementGroupSuffix}' : '${parTopLevelManagementGroupPrefix}-platform${parTopLevelManagementGroupSuffix}'
+  platformConnectivity: parPlatformMgAlzDefaultsEnable ? '${parTopLevelManagementGroupPrefix}-platform-connectivity${parTopLevelManagementGroupSuffix}' : '${parTopLevelManagementGroupPrefix}-platform${parTopLevelManagementGroupSuffix}'
+  platformIdentity: parPlatformMgAlzDefaultsEnable ? '${parTopLevelManagementGroupPrefix}-platform-identity${parTopLevelManagementGroupSuffix}' : '${parTopLevelManagementGroupPrefix}-platform${parTopLevelManagementGroupSuffix}'
+```
+
+#### alzDefaultPolicyAssignments.parameters.ictstuff.json
 
 ```json
 {
@@ -470,7 +492,7 @@ $inputObject = @{
   DeploymentName        = 'alz-alzPolicyAssignmentDefaultsDeployment-{0}' -f (-join (Get-Date -Format 'yyyyMMddTHHMMssffffZ')[0..63])
   Location              = 'westeurope'
   ManagementGroupId     = 'alz-mg'
-  TemplateFile          = "infra-as-code/bicep/modules/policy/assignments/alzDefaults/alzDefaultPolicyAssignments.bicep"
+  TemplateFile          = "infra-as-code/bicep/modules/policy/assignments/alzDefaults/alzDefaultPolicyAssignments.ictstuff.bicep"
   TemplateParameterFile = 'infra-as-code/bicep/modules/policy/assignments/alzDefaults/parameters/alzDefaultPolicyAssignments.parameters.ictstuff.json'
 }
 ```
